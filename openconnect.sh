@@ -29,8 +29,8 @@
 #########################################################
 
 # 1.) Updated your sudo config with (edit "osx-username" with your username):
-#osx-username ALL=(ALL) NOPASSWD: /usr/local/bin/openconnect
-#osx-username ALL=(ALL) NOPASSWD: /usr/bin/killall -2 openconnect
+# username ALL=(ALL) NOPASSWD: /usr/local/bin/openconnect
+# username ALL=(ALL) NOPASSWD: /usr/bin/killall -2 openconnect
 
 
 # 2.) Make sure openconnect binary is located here:
@@ -39,13 +39,21 @@ VPN_EXECUTABLE=/usr/local/bin/openconnect
 
 
 # 3.) Update your AnyConnect VPN host
-VPN_HOST="vpn.domain.tld"
+VPN_HOSTS=("vpn.domain1.tld" "vpn.domain2.tld")
 
 # 4.) Update your AnyConnect username + tunnel
-VPN_USERNAME="vpn_username@domain.tld#VPN_TUNNEL_OPTIONALLY"
+VPN_USERNAMES=("username1" "username2")
+
+PUSH_OR_PINS=("push" "none")
+
+idx=$2
+
+VPN_HOST=${VPN_HOSTS[idx]}
+VPN_USERNAME=${VPN_USERNAMES[idx]}
+PUSH_OR_PIN=${PUSH_OR_PINS[idx]}
 
 # 5.) Push 2FA (ex: Duo), or Pin/Token (ex: Yubikey, Google Authenticator, TOTP)
-PUSH_OR_PIN="push"
+# PUSH_OR_PIN="push"
 #PUSH_OR_PIN="Yubikey"
 # ---
 # * For Push (and other Duo specifics), options include:
@@ -88,6 +96,8 @@ function prompt_2fa_method() {
 		echo "sms"
 	elif [ "$1" == "phone" ]; then
 		echo "phone"
+    elif [ "$1" == "none" ]; then
+        echo ""
 	else
 		osascript <<EOF
 		tell app "System Events"
@@ -106,7 +116,8 @@ case "$1" in
 
         # Connect based on your 2FA selection (see: $PUSH_OR_PIN for options)
         # For anything else (non-duo) - you would provide your token (see: stoken)
-        echo -e "${VPN_PASSWORD}\n$(prompt_2fa_method ${PUSH_OR_PIN})\n" | sudo "$VPN_EXECUTABLE" -u "$VPN_USERNAME" -i "$VPN_INTERFACE" "$VPN_HOST" &> /dev/null &
+        echo $VPN_HOST $VPN_USERNAME $PUSH_OR_PIN
+        echo -e "${VPN_PASSWORD}\n$(prompt_2fa_method ${PUSH_OR_PIN})\n" | sudo "$VPN_EXECUTABLE" -u "$VPN_USERNAME" -i "$VPN_INTERFACE" --authgroup="CornellVPN" "$VPN_HOST" &> /dev/null &
 
         # Wait for connection so menu item refreshes instantly
         until eval "$VPN_CONNECTED"; do sleep 1; done
@@ -129,7 +140,9 @@ else
     # Alternative icon -> but too similar to "connected"
     #echo "VPN 🔓"
     echo '---'
-    echo "Connect VPN | bash='$0' param1=connect terminal=false refresh=true"
+    for i in ${!VPN_HOSTS[@]}; do
+        echo "Connect ${VPN_HOSTS[$i]} | bash='$0' param1=connect param2=$i terminal=false refresh=true"
+    done
     # For debugging!
     #echo "Connect VPN | bash='$0' param1=connect terminal=true refresh=true"
     exit
